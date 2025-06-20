@@ -1,0 +1,636 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>post: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">redditclone/pkg/repo/post/repo.go (100.0%)</option>
+				
+				<option value="file1">redditclone/pkg/repo/post/repo_mock.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package repo
+
+import (
+        "context"
+        "errors"
+        "redditclone/pkg/post"
+        "time"
+
+        "go.mongodb.org/mongo-driver/bson"
+        "go.mongodb.org/mongo-driver/bson/primitive"
+        "go.mongodb.org/mongo-driver/mongo"
+        "go.mongodb.org/mongo-driver/mongo/options"
+)
+
+var (
+        ErrPostNotFound       = errors.New("post not found")
+        ErrCantGenerateID     = errors.New("generate id error")
+        ErrUndefinedCriterion = errors.New("invalid criterion")
+)
+
+const (
+        NoneCriterion     = ""
+        CategoryCriterion = "category"
+        AuthorCriterion   = "author"
+)
+
+type CriteriaData struct {
+        Name string
+        Data string
+}
+
+func NewMemoryRepo(posts *mongo.Collection) *PostMemoryRepository <span class="cov8" title="1">{
+        return &amp;PostMemoryRepository{
+                posts: posts,
+        }
+}</span>
+
+func findItemsOnCriterion(repo *PostMemoryRepository, criterion *CriteriaData) ([]post.Post, error) <span class="cov8" title="1">{
+        var filter bson.M
+
+        switch criterion.Name </span>{
+        case NoneCriterion:<span class="cov8" title="1">
+                filter = bson.M{}</span>
+        case CategoryCriterion:<span class="cov8" title="1">
+                filter = bson.M{"category": criterion.Data}</span>
+        case AuthorCriterion:<span class="cov8" title="1">
+                filter = bson.M{"author.username": criterion.Data}</span>
+        default:<span class="cov8" title="1">
+                return nil, ErrUndefinedCriterion</span>
+
+        }
+
+        <span class="cov8" title="1">opts := options.Find().SetSort(bson.D{{Key: "score", Value: -1}})
+
+        cursor, err := repo.posts.Find(context.Background(), filter, opts)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">defer cursor.Close(context.Background())
+
+        var posts []post.Post
+        if err := cursor.All(context.Background(), &amp;posts); err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">return posts, nil</span>
+}
+
+func (repo *PostMemoryRepository) GetAll() ([]post.Post, error) <span class="cov8" title="1">{
+        return findItemsOnCriterion(repo, &amp;CriteriaData{Name: NoneCriterion})
+}</span>
+
+func (repo *PostMemoryRepository) GetByID(id string) (post.Post, error) <span class="cov8" title="1">{
+        idObj, err := primitive.ObjectIDFromHex(id)
+        if err != nil </span><span class="cov8" title="1">{
+                return post.Post{}, err
+        }</span>
+
+        <span class="cov8" title="1">var p post.Post
+        err = repo.posts.FindOne(context.Background(), bson.M{"_id": idObj}).Decode(&amp;p)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, mongo.ErrNoDocuments) </span><span class="cov8" title="1">{
+                        return post.Post{}, ErrPostNotFound
+                }</span>
+                <span class="cov8" title="1">return post.Post{}, err</span>
+        }
+        <span class="cov8" title="1">return p, nil</span>
+}
+
+func (repo *PostMemoryRepository) Add(postData post.DataPost, login string, userID string) (post.Post, error) <span class="cov8" title="1">{
+        p := post.Post{
+                Score: 1,
+                Views: 0,
+                Type:  postData.Type,
+                Title: postData.Title,
+                Author: post.Author{
+                        Username: login,
+                        ID:       userID,
+                },
+                Category: postData.Category,
+                Votes: []post.Vote{
+                        {
+                                User: userID,
+                                Vote: 1,
+                        },
+                },
+                Comments:         []post.Comment{},
+                Created:          time.Now().UTC().Format(time.RFC3339Nano),
+                UpvotePercentage: 100,
+                ID:               primitive.NewObjectID(),
+                URL:              postData.URL,
+                Text:             postData.Text,
+        }
+
+        _, err := repo.posts.InsertOne(context.Background(), p)
+        if err != nil </span><span class="cov8" title="1">{
+                return post.Post{}, err
+        }</span>
+
+        <span class="cov8" title="1">return p, nil</span>
+}
+
+func (repo *PostMemoryRepository) GetByCategory(category string) ([]post.Post, error) <span class="cov8" title="1">{
+        criteriaData := &amp;CriteriaData{Name: CategoryCriterion, Data: category}
+        return findItemsOnCriterion(repo, criteriaData)
+}</span>
+
+func (repo *PostMemoryRepository) GetPostsByUsername(username string) ([]post.Post, error) <span class="cov8" title="1">{
+        CriteriaData := &amp;CriteriaData{Name: AuthorCriterion, Data: username}
+        return findItemsOnCriterion(repo, CriteriaData)
+}</span>
+
+func (repo *PostMemoryRepository) DeletePostByID(postID string, username string) error <span class="cov8" title="1">{
+        postObjID, err := primitive.ObjectIDFromHex(postID)
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">var p post.Post
+        err = repo.posts.FindOne(context.Background(), bson.M{"_id": postObjID}).Decode(&amp;p)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, mongo.ErrNoDocuments) </span><span class="cov8" title="1">{
+                        return post.ErrSourceNotFound
+                }</span>
+                <span class="cov8" title="1">return err</span>
+        }
+
+        <span class="cov8" title="1">if p.Author.Username != username </span><span class="cov8" title="1">{
+                return post.ErrAccessDenied
+        }</span>
+
+        <span class="cov8" title="1">_, err = repo.posts.DeleteOne(context.Background(), bson.M{"_id": postObjID})
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (repo *PostMemoryRepository) AddComment(postID string, body, username string, userID string) (post.Post, error) <span class="cov8" title="1">{
+        postObjID, err := primitive.ObjectIDFromHex(postID)
+        if err != nil </span><span class="cov8" title="1">{
+                return post.Post{}, err
+        }</span>
+
+        <span class="cov8" title="1">comment := post.Comment{
+                Created: time.Now().UTC().Format(time.RFC3339Nano),
+                Author:  post.Author{Username: username, ID: userID},
+                Body:    body,
+                ID:      primitive.NewObjectID(),
+        }
+
+        update := bson.M{
+                "$push": bson.M{
+                        "comments": comment,
+                },
+        }
+
+        var updatedPost post.Post
+        err = repo.posts.FindOneAndUpdate(
+                context.Background(),
+                bson.M{"_id": postObjID},
+                update,
+                options.FindOneAndUpdate().SetReturnDocument(options.After),
+        ).Decode(&amp;updatedPost)
+
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, mongo.ErrNoDocuments) </span><span class="cov8" title="1">{
+                        return post.Post{}, ErrPostNotFound
+                }</span>
+                <span class="cov8" title="1">return post.Post{}, err</span>
+        }
+
+        <span class="cov8" title="1">return updatedPost, err</span>
+}
+
+func (repo *PostMemoryRepository) DeleteComment(postID, commentID, username string) (post.Post, error) <span class="cov8" title="1">{
+        postObjID, err := primitive.ObjectIDFromHex(postID)
+        if err != nil </span><span class="cov8" title="1">{
+                return post.Post{}, err
+        }</span>
+
+        <span class="cov8" title="1">commentObjID, err := primitive.ObjectIDFromHex(commentID)
+        if err != nil </span><span class="cov8" title="1">{
+                return post.Post{}, err
+        }</span>
+
+        <span class="cov8" title="1">var p post.Post
+        err = repo.posts.FindOne(context.Background(), bson.M{"_id": postObjID}).Decode(&amp;p)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, mongo.ErrNoDocuments) </span><span class="cov8" title="1">{
+                        return post.Post{}, post.ErrSourceNotFound
+                }</span>
+                <span class="cov8" title="1">return post.Post{}, err</span>
+        }
+
+        <span class="cov8" title="1">var commentFound bool
+        for _, comment := range p.Comments </span><span class="cov8" title="1">{
+                if comment.ID != commentObjID </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">if comment.Author.Username != username </span><span class="cov8" title="1">{
+                        return post.Post{}, post.ErrAccessDenied
+                }</span>
+                <span class="cov8" title="1">commentFound = true
+                break</span>
+
+        }
+
+        <span class="cov8" title="1">if !commentFound </span><span class="cov8" title="1">{
+                return post.Post{}, post.ErrSourceNotFound
+        }</span>
+
+        <span class="cov8" title="1">update := bson.M{
+                "$pull": bson.M{
+                        "comments": bson.M{"_id": commentObjID},
+                },
+        }
+
+        var updatedPost post.Post
+        err = repo.posts.FindOneAndUpdate(
+                context.Background(),
+                bson.M{"_id": postObjID},
+                update,
+                options.FindOneAndUpdate().SetReturnDocument(options.After),
+        ).Decode(&amp;updatedPost)
+
+        if err != nil </span><span class="cov8" title="1">{
+                return post.Post{}, err
+        }</span>
+
+        <span class="cov8" title="1">return updatedPost, nil</span>
+}
+
+func (repo *PostMemoryRepository) VotePost(postID, userID string, voteDirection int) (post.Post, error) <span class="cov8" title="1">{
+        postObjID, err := primitive.ObjectIDFromHex(postID)
+        if err != nil </span><span class="cov8" title="1">{
+                return post.Post{}, err
+        }</span>
+
+        <span class="cov8" title="1">ctx := context.Background()
+
+        var p post.Post
+        err = repo.posts.FindOne(ctx, bson.M{"_id": postObjID}).Decode(&amp;p)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, mongo.ErrNoDocuments) </span><span class="cov8" title="1">{
+                        return post.Post{}, post.ErrSourceNotFound
+                }</span>
+                <span class="cov8" title="1">return post.Post{}, err</span>
+        }
+
+        <span class="cov8" title="1">var existingVote *post.Vote
+        for _, v := range p.Votes </span><span class="cov8" title="1">{
+                if v.User == userID </span><span class="cov8" title="1">{
+                        existingVote = &amp;post.Vote{User: v.User, Vote: v.Vote}
+                        break</span>
+                }
+        }
+
+        <span class="cov8" title="1">var update bson.M
+        var filter = bson.M{"_id": postObjID}
+
+        switch </span>{
+        case existingVote == nil &amp;&amp; voteDirection == post.VoteNone:<span class="cov8" title="1">
+                return p, nil</span>
+
+        case existingVote == nil:<span class="cov8" title="1">
+                update = bson.M{
+                        "$push": bson.M{"votes": bson.M{"_id": userID, "vote": voteDirection}},
+                        "$inc":  bson.M{"score": voteDirection},
+                }
+                _, err = repo.posts.UpdateOne(ctx, filter, update)</span>
+
+        case voteDirection == post.VoteNone:<span class="cov8" title="1">
+                update = bson.M{
+                        "$pull": bson.M{"votes": bson.M{"_id": userID}},
+                        "$inc":  bson.M{"score": -existingVote.Vote},
+                }
+                _, err = repo.posts.UpdateOne(ctx, filter, update)</span>
+
+        case voteDirection == existingVote.Vote:<span class="cov8" title="1">
+                return post.Post{}, post.ErrAlreadyVoted</span>
+
+        default:<span class="cov8" title="1">
+                delta := voteDirection - existingVote.Vote
+                update = bson.M{
+                        "$set": bson.M{"votes.$[elem].vote": voteDirection},
+                        "$inc": bson.M{"score": delta},
+                }
+                opts := options.Update().SetArrayFilters(options.ArrayFilters{
+                        Filters: []interface{}{bson.M{"elem._id": userID}},
+                })
+                _, err = repo.posts.UpdateOne(ctx, filter, update, opts)</span>
+        }
+
+        <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
+                return post.Post{}, err
+        }</span>
+
+        <span class="cov8" title="1">err = repo.posts.FindOne(ctx, bson.M{"_id": postObjID}).Decode(&amp;p)
+        if err != nil </span><span class="cov8" title="1">{
+                return post.Post{}, err
+        }</span>
+
+        <span class="cov8" title="1">upvotePercentage := calculateUpvotePercentage(p.Votes)
+
+        _, err = repo.posts.UpdateOne(ctx,
+                bson.M{"_id": postObjID},
+                bson.M{"$set": bson.M{
+                        "upvotePercentage": upvotePercentage,
+                }},
+        )
+        if err != nil </span><span class="cov8" title="1">{
+                return post.Post{}, err
+        }</span>
+
+        <span class="cov8" title="1">err = repo.posts.FindOne(ctx, bson.M{"_id": postObjID}).Decode(&amp;p)
+        if err != nil </span><span class="cov8" title="1">{
+                return post.Post{}, err
+        }</span>
+
+        <span class="cov8" title="1">return p, nil</span>
+}
+
+func calculateUpvotePercentage(votes []post.Vote) int <span class="cov8" title="1">{
+        total := len(votes)
+        if total == 0 </span><span class="cov8" title="1">{
+                return 0
+        }</span>
+
+        <span class="cov8" title="1">upvotes := 0
+        for _, v := range votes </span><span class="cov8" title="1">{
+                if v.Vote == post.VoteUp </span><span class="cov8" title="1">{
+                        upvotes++
+                }</span>
+        }
+
+        <span class="cov8" title="1">return upvotes * 100 / total</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">// Code generated by MockGen. DO NOT EDIT.
+// Source: repo_interface.go
+
+// Package repo is a generated GoMock package.
+package repo
+
+import (
+        post "redditclone/pkg/post"
+        reflect "reflect"
+
+        gomock "github.com/golang/mock/gomock"
+)
+
+// MockPostRepo is a mock of PostRepo interface.
+type MockPostRepo struct {
+        ctrl     *gomock.Controller
+        recorder *MockPostRepoMockRecorder
+}
+
+// MockPostRepoMockRecorder is the mock recorder for MockPostRepo.
+type MockPostRepoMockRecorder struct {
+        mock *MockPostRepo
+}
+
+// NewMockPostRepo creates a new mock instance.
+func NewMockPostRepo(ctrl *gomock.Controller) *MockPostRepo <span class="cov0" title="0">{
+        mock := &amp;MockPostRepo{ctrl: ctrl}
+        mock.recorder = &amp;MockPostRepoMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockPostRepo) EXPECT() *MockPostRepoMockRecorder <span class="cov0" title="0">{
+        return m.recorder
+}</span>
+
+// Add mocks base method.
+func (m *MockPostRepo) Add(postData post.DataPost, login, userID string) (post.Post, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "Add", postData, login, userID)
+        ret0, _ := ret[0].(post.Post)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// Add indicates an expected call of Add.
+func (mr *MockPostRepoMockRecorder) Add(postData, login, userID interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockPostRepo)(nil).Add), postData, login, userID)
+}</span>
+
+// AddComment mocks base method.
+func (m *MockPostRepo) AddComment(postID, body, username, userID string) (post.Post, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "AddComment", postID, body, username, userID)
+        ret0, _ := ret[0].(post.Post)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// AddComment indicates an expected call of AddComment.
+func (mr *MockPostRepoMockRecorder) AddComment(postID, body, username, userID interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddComment", reflect.TypeOf((*MockPostRepo)(nil).AddComment), postID, body, username, userID)
+}</span>
+
+// DeleteComment mocks base method.
+func (m *MockPostRepo) DeleteComment(postID, commentID, username string) (post.Post, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "DeleteComment", postID, commentID, username)
+        ret0, _ := ret[0].(post.Post)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// DeleteComment indicates an expected call of DeleteComment.
+func (mr *MockPostRepoMockRecorder) DeleteComment(postID, commentID, username interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteComment", reflect.TypeOf((*MockPostRepo)(nil).DeleteComment), postID, commentID, username)
+}</span>
+
+// DeletePostByID mocks base method.
+func (m *MockPostRepo) DeletePostByID(postID, username string) error <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "DeletePostByID", postID, username)
+        ret0, _ := ret[0].(error)
+        return ret0
+}</span>
+
+// DeletePostByID indicates an expected call of DeletePostByID.
+func (mr *MockPostRepoMockRecorder) DeletePostByID(postID, username interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePostByID", reflect.TypeOf((*MockPostRepo)(nil).DeletePostByID), postID, username)
+}</span>
+
+// GetAll mocks base method.
+func (m *MockPostRepo) GetAll() ([]post.Post, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "GetAll")
+        ret0, _ := ret[0].([]post.Post)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// GetAll indicates an expected call of GetAll.
+func (mr *MockPostRepoMockRecorder) GetAll() *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockPostRepo)(nil).GetAll))
+}</span>
+
+// GetByCategory mocks base method.
+func (m *MockPostRepo) GetByCategory(category string) ([]post.Post, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "GetByCategory", category)
+        ret0, _ := ret[0].([]post.Post)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// GetByCategory indicates an expected call of GetByCategory.
+func (mr *MockPostRepoMockRecorder) GetByCategory(category interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByCategory", reflect.TypeOf((*MockPostRepo)(nil).GetByCategory), category)
+}</span>
+
+// GetByID mocks base method.
+func (m *MockPostRepo) GetByID(id string) (post.Post, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "GetByID", id)
+        ret0, _ := ret[0].(post.Post)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// GetByID indicates an expected call of GetByID.
+func (mr *MockPostRepoMockRecorder) GetByID(id interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockPostRepo)(nil).GetByID), id)
+}</span>
+
+// GetPostsByUsername mocks base method.
+func (m *MockPostRepo) GetPostsByUsername(username string) ([]post.Post, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "GetPostsByUsername", username)
+        ret0, _ := ret[0].([]post.Post)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// GetPostsByUsername indicates an expected call of GetPostsByUsername.
+func (mr *MockPostRepoMockRecorder) GetPostsByUsername(username interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostsByUsername", reflect.TypeOf((*MockPostRepo)(nil).GetPostsByUsername), username)
+}</span>
+
+// VotePost mocks base method.
+func (m *MockPostRepo) VotePost(postID, userID string, voteDirection int) (post.Post, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "VotePost", postID, userID, voteDirection)
+        ret0, _ := ret[0].(post.Post)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// VotePost indicates an expected call of VotePost.
+func (mr *MockPostRepoMockRecorder) VotePost(postID, userID, voteDirection interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VotePost", reflect.TypeOf((*MockPostRepo)(nil).VotePost), postID, userID, voteDirection)
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

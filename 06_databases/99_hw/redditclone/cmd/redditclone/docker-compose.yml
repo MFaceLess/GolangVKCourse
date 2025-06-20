@@ -1,0 +1,25 @@
+# docker-compose up
+# docker-compose down
+# docker rm $(docker ps -a -q) && docker volume prune -f
+
+services:
+  mysql:
+    image: mysql:8
+    command: --mysql-native-password=ON
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+    ports:
+      - '${DB_PORT}:${DB_PORT}'
+    volumes:
+      - './_sql/:/docker-entrypoint-initdb.d/'
+
+  mongodb:
+    image: 'mongo:5'
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
+    ports:
+      - '27017-27019:27017-27019'
+
+
+

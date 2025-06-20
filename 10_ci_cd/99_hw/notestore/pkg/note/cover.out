@@ -1,0 +1,26 @@
+mode: set
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:24.44,29.2 1 1
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:31.57,34.35 3 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:34.35,36.3 1 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:37.2,37.12 1 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:40.65,44.22 3 1
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:44.22,46.3 1 1
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:48.2,58.21 4 1
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:61.73,66.9 4 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:66.9,68.3 1 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:70.2,73.22 3 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:76.60,81.9 4 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:81.9,83.3 1 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:85.2,87.12 2 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:90.70,94.33 3 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:94.33,96.3 1 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:97.2,99.19 2 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:100.17,101.47 1 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:101.47,103.4 1 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:104.19,105.47 1 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:105.47,107.4 1 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:108.22,109.47 1 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:109.47,111.4 1 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:112.22,113.47 1 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:113.47,115.4 1 0
+gitlab.vk-golang.ru/vk-golang/lectures/10_ci_cd/99_hw/notestore/pkg/note/repo.go:119.2,119.14 1 0

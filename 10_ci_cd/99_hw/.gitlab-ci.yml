@@ -1,0 +1,42 @@
+stages:
+  - build
+  - test
+  - lint
+  - deploy
+
+build:
+  stage: build
+  script:
+    - go build -o notestore-app ./notestore/cmd/notestore/main.go
+  artifacts:
+    paths:
+      - notestore-app
+      - .env
+
+test:
+  stage: test
+  script:
+    - go test -v ./...
+
+lint:
+  stage: lint
+  script:
+    - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin $GOLANGCI_LINT_VERSION
+    - golangci-lint run ./...
+
+deploy:
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+  before_script:
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa.pem
+    - chmod 400 ~/.ssh/id_rsa.pem
+    - ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts
+  script:
+    - scp -i ~/.ssh/id_rsa.pem ./notestore-app ./notestore/cmd/notestore/.env $SSH_USER@$SSH_HOST:~/
+    - ssh -i ~/.ssh/id_rsa.pem $SSH_USER@$SSH_HOST "chmod +x ~/notestore-app"
+    - ssh -i ~/.ssh/id_rsa.pem $SSH_USER@$SSH_HOST "sudo mv ~/notestore-app ~/.env /usr/local/bin/"
+    - ssh -i ~/.ssh/id_rsa.pem $SSH_USER@$SSH_HOST "sudo systemctl restart notestore"
+  dependencies:
+    - build

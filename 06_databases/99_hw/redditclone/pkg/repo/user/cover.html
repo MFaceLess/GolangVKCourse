@@ -1,0 +1,360 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>user: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">redditclone/pkg/repo/user/repo.go (100.0%)</option>
+				
+				<option value="file1">redditclone/pkg/repo/user/repo_mock.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package repo
+
+import (
+        "crypto/rand"
+        "database/sql"
+        "errors"
+        "fmt"
+
+        "golang.org/x/crypto/bcrypt"
+
+        "redditclone/pkg/session"
+        "redditclone/pkg/user"
+)
+
+var (
+        ErrNotFoundUser             = errors.New("user not found")
+        ErrUserAlreadyExists        = errors.New("user already exists")
+        ErrCantGenerateHashPassword = errors.New("error hash password")
+)
+
+type BcryptHasher struct{}
+
+func (BcryptHasher) HashPassword(pass string) ([]byte, error) <span class="cov8" title="1">{
+        return bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
+}</span>
+
+type RandomIDGenerator struct{}
+
+func (RandomIDGenerator) GenerateID() ([]byte, error) <span class="cov8" title="1">{
+        id := make([]byte, 16)
+        _, err := rand.Read(id)
+        return id, err
+}</span>
+
+func NewMemoryRepo(db *sql.DB, jwtGen session.JWTGenerator) *UserMemoryRepository <span class="cov8" title="1">{
+        return &amp;UserMemoryRepository{
+                db:      db,
+                session: jwtGen,
+                hasher:  BcryptHasher{},
+                idgen:   RandomIDGenerator{},
+        }
+}</span>
+
+func (repo *UserMemoryRepository) Authorize(login, pass string) (string, error) <span class="cov8" title="1">{
+        var (
+                userID         string
+                hashedPassword []byte
+        )
+
+        err := repo.db.QueryRow(
+                "SELECT id, password FROM users WHERE login = ?",
+                login,
+        ).Scan(&amp;userID, &amp;hashedPassword)
+
+        if err != nil </span><span class="cov8" title="1">{
+                if err == sql.ErrNoRows </span><span class="cov8" title="1">{
+                        return "", ErrNotFoundUser
+                }</span>
+                <span class="cov8" title="1">return "", err</span>
+        }
+
+        <span class="cov8" title="1">if err := bcrypt.CompareHashAndPassword(hashedPassword, []byte(pass)); err != nil </span><span class="cov8" title="1">{
+                return "", ErrNotFoundUser
+        }</span>
+
+        <span class="cov8" title="1">return repo.session.GenerateJWT(login, userID)</span>
+}
+
+func (repo *UserMemoryRepository) Register(login, pass string) (string, error) <span class="cov8" title="1">{
+        var exists bool
+        err := repo.db.QueryRow(
+                "SELECT EXISTS(SELECT 1 FROM users WHERE login = ?)",
+                login,
+        ).Scan(&amp;exists)
+
+        if err != nil </span><span class="cov8" title="1">{
+                return "", err
+        }</span>
+
+        <span class="cov8" title="1">if exists </span><span class="cov8" title="1">{
+                return "", ErrUserAlreadyExists
+        }</span>
+
+        <span class="cov8" title="1">hashedPassword, err := repo.hasher.HashPassword(pass)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", ErrCantGenerateHashPassword
+        }</span>
+
+        <span class="cov8" title="1">randID, err := repo.idgen.GenerateID()
+        if err != nil </span><span class="cov8" title="1">{
+                return "", err
+        }</span>
+
+        <span class="cov8" title="1">newUser := &amp;user.User{Password: hashedPassword, Login: login, ID: fmt.Sprintf("%x", randID)}
+
+        _, err = repo.db.Exec(
+                "INSERT INTO users (id, login, password) VALUES (?, ?, ?)",
+                newUser.ID,
+                newUser.Login,
+                newUser.Password,
+        )
+
+        if err != nil </span><span class="cov8" title="1">{
+                return "", err
+        }</span>
+
+        <span class="cov8" title="1">tokenString, err := repo.session.GenerateJWT(login, newUser.ID)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", err
+        }</span>
+
+        <span class="cov8" title="1">return tokenString, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">// Code generated by MockGen. DO NOT EDIT.
+// Source: repo_interface.go
+
+// Package repo is a generated GoMock package.
+package repo
+
+import (
+        reflect "reflect"
+
+        gomock "github.com/golang/mock/gomock"
+)
+
+// MockUserRepo is a mock of UserRepo interface.
+type MockUserRepo struct {
+        ctrl     *gomock.Controller
+        recorder *MockUserRepoMockRecorder
+}
+
+// MockUserRepoMockRecorder is the mock recorder for MockUserRepo.
+type MockUserRepoMockRecorder struct {
+        mock *MockUserRepo
+}
+
+// NewMockUserRepo creates a new mock instance.
+func NewMockUserRepo(ctrl *gomock.Controller) *MockUserRepo <span class="cov0" title="0">{
+        mock := &amp;MockUserRepo{ctrl: ctrl}
+        mock.recorder = &amp;MockUserRepoMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockUserRepo) EXPECT() *MockUserRepoMockRecorder <span class="cov0" title="0">{
+        return m.recorder
+}</span>
+
+// Authorize mocks base method.
+func (m *MockUserRepo) Authorize(login, pass string) (string, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "Authorize", login, pass)
+        ret0, _ := ret[0].(string)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// Authorize indicates an expected call of Authorize.
+func (mr *MockUserRepoMockRecorder) Authorize(login, pass interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Authorize", reflect.TypeOf((*MockUserRepo)(nil).Authorize), login, pass)
+}</span>
+
+// Register mocks base method.
+func (m *MockUserRepo) Register(login, pass string) (string, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "Register", login, pass)
+        ret0, _ := ret[0].(string)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// Register indicates an expected call of Register.
+func (mr *MockUserRepoMockRecorder) Register(login, pass interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockUserRepo)(nil).Register), login, pass)
+}</span>
+
+// MockHasher is a mock of Hasher interface.
+type MockHasher struct {
+        ctrl     *gomock.Controller
+        recorder *MockHasherMockRecorder
+}
+
+// MockHasherMockRecorder is the mock recorder for MockHasher.
+type MockHasherMockRecorder struct {
+        mock *MockHasher
+}
+
+// NewMockHasher creates a new mock instance.
+func NewMockHasher(ctrl *gomock.Controller) *MockHasher <span class="cov0" title="0">{
+        mock := &amp;MockHasher{ctrl: ctrl}
+        mock.recorder = &amp;MockHasherMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockHasher) EXPECT() *MockHasherMockRecorder <span class="cov0" title="0">{
+        return m.recorder
+}</span>
+
+// HashPassword mocks base method.
+func (m *MockHasher) HashPassword(pass string) ([]byte, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "HashPassword", pass)
+        ret0, _ := ret[0].([]byte)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// HashPassword indicates an expected call of HashPassword.
+func (mr *MockHasherMockRecorder) HashPassword(pass interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HashPassword", reflect.TypeOf((*MockHasher)(nil).HashPassword), pass)
+}</span>
+
+// MockIDGenerator is a mock of IDGenerator interface.
+type MockIDGenerator struct {
+        ctrl     *gomock.Controller
+        recorder *MockIDGeneratorMockRecorder
+}
+
+// MockIDGeneratorMockRecorder is the mock recorder for MockIDGenerator.
+type MockIDGeneratorMockRecorder struct {
+        mock *MockIDGenerator
+}
+
+// NewMockIDGenerator creates a new mock instance.
+func NewMockIDGenerator(ctrl *gomock.Controller) *MockIDGenerator <span class="cov0" title="0">{
+        mock := &amp;MockIDGenerator{ctrl: ctrl}
+        mock.recorder = &amp;MockIDGeneratorMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockIDGenerator) EXPECT() *MockIDGeneratorMockRecorder <span class="cov0" title="0">{
+        return m.recorder
+}</span>
+
+// GenerateID mocks base method.
+func (m *MockIDGenerator) GenerateID() ([]byte, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "GenerateID")
+        ret0, _ := ret[0].([]byte)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// GenerateID indicates an expected call of GenerateID.
+func (mr *MockIDGeneratorMockRecorder) GenerateID() *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateID", reflect.TypeOf((*MockIDGenerator)(nil).GenerateID))
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
